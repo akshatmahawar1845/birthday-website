@@ -231,17 +231,26 @@ class MusicBox {
   start() {
     if (this.userMuted) return;
     const ctx = getAudioContext();
-    if (ctx) {
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
+    if (!ctx) return;
+    if (!this.isPlaying) {
+      this.isPlaying = true;
+      this.step = 0;
+    }
+
+    const beginPlayback = () => {
+      if (!this.isPlaying || this.userMuted) return;
       const master = this.getMasterGain(ctx);
       master.gain.setValueAtTime(1, ctx.currentTime);
+      if (!this.timer) this.tick();
+    };
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(beginPlayback).catch(() => {
+        this.isPlaying = false;
+      });
+    } else {
+      beginPlayback();
     }
-    if (this.isPlaying) return;
-    this.isPlaying = true;
-    this.step = 0;
-    this.tick();
   }
 
   tick() {

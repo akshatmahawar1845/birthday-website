@@ -137,32 +137,37 @@ export default function App() {
   const [giftBoxOpened, setGiftBoxOpened] = useState(false);
   const [litStarLetters, setLitStarLetters] = useState(0);
 
-  // Auto-play music on start + instant user interaction unlock
+  // Attempt autoplay, then retry after a user gesture if the browser blocks it.
   useEffect(() => {
-    // Attempt playback immediately
     musicBox.start();
     setIsPlayingMusic(true);
 
+    const events = ['pointerdown', 'touchstart', 'keydown'];
+    let isUnlocking = false;
     const unlockAudio = () => {
-      if (musicBox.userMuted) return;
+      if (musicBox.userMuted || isUnlocking) return;
+      isUnlocking = true;
       resumeAudioContext().then(() => {
         if (!musicBox.userMuted) {
           musicBox.start();
           setIsPlayingMusic(true);
         }
-      });
-      ['pointerdown', 'pointermove', 'touchstart', 'scroll', 'click', 'keydown'].forEach((e) => {
-        window.removeEventListener(e, unlockAudio);
+        events.forEach((event) => {
+          window.removeEventListener(event, unlockAudio);
+        });
+      }).catch((error) => {
+        isUnlocking = false;
+        console.warn('Unable to unlock background music:', error);
       });
     };
 
-    ['pointerdown', 'pointermove', 'touchstart', 'scroll', 'click', 'keydown'].forEach((e) => {
-      window.addEventListener(e, unlockAudio, { passive: true });
+    events.forEach((event) => {
+      window.addEventListener(event, unlockAudio, { passive: true });
     });
 
     return () => {
-      ['pointerdown', 'pointermove', 'touchstart', 'scroll', 'click', 'keydown'].forEach((e) => {
-        window.removeEventListener(e, unlockAudio);
+      events.forEach((event) => {
+        window.removeEventListener(event, unlockAudio);
       });
     };
   }, []);
